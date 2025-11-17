@@ -13,28 +13,31 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
-      # Install Chrome with a proper sandbox on the runner
-      - name: Setup Chrome
-        id: chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-          install-dependencies: true
+      # Install Google Chrome with setuid sandbox correctly configured
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl gnupg ca-certificates
+          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-linux-signing-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
 
-      # Install deps; tell Puppeteer to use the system Chrome (don’t download its own)
-      - name: npm ci
+      # Install deps; tell puppeteer to use the system Chrome (don’t download Chromium)
+      - name: Install deps
         run: npm ci
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
-          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
 
-      # Build (the prerender step will now use the installed Chrome)
+      # (Optional) If you ever hit a TypeScript CLI error, uncomment the next line:
+      # - run: npm i -D typescript
+
       - name: Build
         run: npm run build
         env:
-          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
 
       - uses: actions/upload-artifact@v4
         with:
