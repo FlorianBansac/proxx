@@ -1,20 +1,41 @@
 name: Build PROXX
 on:
-  workflow_dispatch: {}   # run manually
+  workflow_dispatch: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
       - uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'   # uses the repo's Node version
+          node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm ci
-      # If you ever see a “spawn tsc ENOENT” during build, uncomment:
-      # - run: npm i -D typescript
-      - run: npm run build
+
+      # Install Chrome with a proper sandbox on the runner
+      - name: Setup Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      # Install deps; tell Puppeteer to use the system Chrome (don’t download its own)
+      - name: npm ci
+        run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      # Build (the prerender step will now use the installed Chrome)
+      - name: Build
+        run: npm run build
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: proxx-dist
