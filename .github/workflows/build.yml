@@ -1,0 +1,23 @@
+name: Build PROXX
+on:
+  workflow_dispatch: {}   # run manually
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'   # uses the repo's Node version
+          cache: 'npm'
+      - run: npm ci
+      # If you ever see a “spawn tsc ENOENT” during build, uncomment:
+      # - run: npm i -D typescript
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: proxx-dist
+          path: |
+            dist/**
+            index.html
